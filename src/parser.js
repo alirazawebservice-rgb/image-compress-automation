@@ -218,6 +218,7 @@ Options:
 }
 
 module.exports = {
+  MAX_DIMENSION,
   parseSize,
   parseColor,
   parseArgs,

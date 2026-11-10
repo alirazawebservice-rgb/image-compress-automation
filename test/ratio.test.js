@@ -56,4 +56,10 @@ describe('validateAspectRatio', () => {
     assert.ok(mismatch.diff > 0.01);
     assert.deepEqual(mismatch.suggestedDimensions, ['800x1600', '400x800']);
   });
+
+  it('omits suggested dimensions that exceed MAX_DIMENSION (16384px)', () => {
+    const extreme = validateAspectRatio(100, 5000, 800, 800);
+    assert.equal(extreme.ok, false);
+    assert.deepEqual(extreme.suggestedDimensions, ['16x800']);
+  });
 });

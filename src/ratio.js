@@ -1,3 +1,4 @@
+const { MAX_DIMENSION } = require('./parser');
 const DEFAULT_RATIO_TOLERANCE = 0.01;
 
 /**
@@ -68,10 +69,15 @@ function validateAspectRatio(srcW, srcH, targetW, targetH, tolerance = DEFAULT_R
   if (!ok) {
     const keepWidthH = Math.max(1, Math.round(targetW / srcRatio));
     const keepHeightW = Math.max(1, Math.round(targetH * srcRatio));
-    const byWidth = `${targetW}x${keepWidthH}`;
+    if (targetW <= MAX_DIMENSION && keepWidthH <= MAX_DIMENSION) {
+      suggestedDimensions.push(`${targetW}x${keepWidthH}`);
+    }
     const byHeight = `${keepHeightW}x${targetH}`;
-    suggestedDimensions.push(byWidth);
-    if (byHeight !== byWidth) {
+    if (
+      keepHeightW <= MAX_DIMENSION &&
+      targetH <= MAX_DIMENSION &&
+      !suggestedDimensions.includes(byHeight)
+    ) {
       suggestedDimensions.push(byHeight);
     }
   }
