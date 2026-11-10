@@ -1,0 +1,20 @@
+# Dependencies
+node_modules/
+
+# Local user configuration (stores personal working folder choice)
+.imagerc.json
+
+# User image folders — keep folder placeholders, never commit user photos
+input/*
+!input/.gitkeep
+output/*
+!output/.gitkeep
+
+# OS & editor artifacts
+.DS_Store
+Thumbs.db
+desktop.ini
+*.log
+npm-debug.log*
+.vscode/
+.idea/

@@ -1,0 +1,42 @@
+{
+  "name": "image-compress-automation",
+  "version": "1.0.0",
+  "description": "Zero-Photoshop bulk image resizer & JPG compressor for small businesses — preserves filenames, enforces aspect ratios, cross-platform CLI + AI skill.",
+  "main": "bin/cli.js",
+  "bin": {
+    "image-compress": "./bin/cli.js"
+  },
+  "scripts": {
+    "start": "node bin/cli.js",
+    "setup": "node bin/cli.js --setup",
+    "test": "node --test test/*.test.js"
+  },
+  "keywords": [
+    "image-compression",
+    "image-resizer",
+    "sharp",
+    "jpeg",
+    "ecommerce",
+    "shopify",
+    "automation",
+    "cli",
+    "small-business"
+  ],
+  "author": "Ahmed (alirazawebservice-rgb)",
+  "license": "MIT",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/alirazawebservice-rgb/image-compress-automation.git"
+  },
+  "bugs": {
+    "url": "https://github.com/alirazawebservice-rgb/image-compress-automation/issues"
+  },
+  "homepage": "https://github.com/alirazawebservice-rgb/image-compress-automation#readme",
+  "dependencies": {
+    "sharp": "^0.35.5"
+  }
+}
