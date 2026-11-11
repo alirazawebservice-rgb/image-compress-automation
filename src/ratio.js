@@ -93,10 +93,58 @@ function validateAspectRatio(srcW, srcH, targetW, targetH, tolerance = DEFAULT_R
   };
 }
 
+/**
+ * Resolve final target dimensions either from explicit WxH (strict ratio check)
+ * or single target height (auto-calculating proportional width without cropping/distortion).
+ * @param {number} srcW
+ * @param {number} srcH
+ * @param {number | null | undefined} targetW
+ * @param {number} targetH
+ * @param {number} [tolerance=0.01]
+ * @returns {object}
+ */
+function resolveTargetDimensions(srcW, srcH, targetW, targetH, tolerance = DEFAULT_RATIO_TOLERANCE) {
+  if (targetW === null || targetW === undefined) {
+    const computedWidth = Math.round(targetH * (srcW / srcH));
+    const srcRatioLabel = simplifyRatio(srcW, srcH);
+
+    if (!Number.isFinite(computedWidth) || computedWidth < 1 || computedWidth > MAX_DIMENSION) {
+      return {
+        ok: false,
+        mode: 'height',
+        reason: 'dimension-out-of-range',
+        width: computedWidth,
+        height: targetH,
+        srcRatioLabel,
+        error: `Computed width ${computedWidth}px for ${targetH}px height exceeds valid bounds (1-${MAX_DIMENSION}px).`,
+      };
+    }
+
+    return {
+      ok: true,
+      mode: 'height',
+      width: computedWidth,
+      height: targetH,
+      srcRatioLabel,
+      targetRatioLabel: simplifyRatio(computedWidth, targetH),
+    };
+  }
+
+  const ratioCheck = validateAspectRatio(srcW, srcH, targetW, targetH, tolerance);
+  return {
+    ...ratioCheck,
+    mode: 'exact',
+    reason: ratioCheck.ok ? undefined : 'aspect-ratio-mismatch',
+    width: targetW,
+    height: targetH,
+  };
+}
+
 module.exports = {
   DEFAULT_RATIO_TOLERANCE,
   gcd,
   simplifyRatio,
   getEffectiveDimensions,
   validateAspectRatio,
+  resolveTargetDimensions,
 };
