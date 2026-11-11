@@ -3,8 +3,10 @@
 [![Node.js](https://img.shields.io/badge/node-%3E%3D20.0.0-brightgreen.svg)](https://nodejs.org/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
-**Zero-Photoshop bulk image resizer & JPG compressor for small businesses.**  
-Turn **40+ MB** of heavy PNG product images into **~2 MB** of fast-loading, web-ready JPGs in **under 10 seconds**—on Windows, macOS, or Linux.
+**Zero-Photoshop bulk image resizer & compressor for small businesses.**  
+Turn **40+ MB** of heavy PNG product images into **fast-loading JPG or WebP** files in **under 10 seconds**—on Windows, macOS, or Linux.
+
+> **New in v1.1:** Add `--format webp` to get **WebP output** — typically **25–35% smaller** than JPG at the same quality. Perfect for Shopify, WooCommerce, and Google PageSpeed.
 
 ---
 
@@ -15,7 +17,8 @@ Small e-commerce stores (Shopify, WooCommerce, Etsy) often receive high-resoluti
 With **Image Compress Automation**:
 - ✅ **Works on any computer or drive** — asks you on first run where you want your `input` and `output` folders (Windows `C:\`/`D:\`/`F:\`, macOS, or Linux).
 - ✅ **Fast bulk conversion** — converts entire batches of `.png`, `.jpg`, `.jpeg`, and `.webp` files in seconds using [`sharp`](https://sharp.pixelplumbing.com/).
-- ✅ **Keeps your exact filenames** — `Heart Blue.png` becomes `Heart Blue.jpg`.
+- ✅ **Keeps your exact filenames** — `Heart Blue.png` becomes `Heart Blue.jpg` or `Heart Blue.webp`.
+- ✅ **WebP support** — add `--format webp` for files 25–35% smaller than JPG with the same visual quality.
 - ✅ **Protects image proportions** — strictly verifies aspect ratios (EXIF-aware) and refuses to silently crop or stretch mismatched images.
 - ✅ **Clean backgrounds for transparent PNGs** — automatically flattens transparency onto white (`#ffffff`, customizable via `--bg`) instead of turning black.
 - ✅ **AI Assistant ready** — includes [`AGENTS.md`](AGENTS.md) and [`skills/image-compress-automation/SKILL.md`](skills/image-compress-automation/SKILL.md) so AI coding tools follow the exact same safe workflow.
@@ -29,7 +32,7 @@ flowchart LR
     A["1. First Run<br/>Pick working folder"] --> B["2. Drop images<br/>into input/"]
     B --> C["3. Enter target size<br/>e.g. 800x800"]
     C --> D{"Aspect ratio<br/>matches?"}
-    D -- Yes --> E["4. Saved as compressed .jpg<br/>in output/ (same filename)"]
+    D -- Yes --> E["4. Saved as compressed .jpg or .webp<br/>in output/ (same filename)"]
     D -- No --> F["Skipped safely with error<br/>+ valid size suggestion"]
 ```
 
@@ -110,10 +113,11 @@ You can pass flags directly with `node bin/cli.js` (or `node convert.js` for bac
 | Option | Alias | Default | Description |
 |---|---|---|---|
 | `--size <WxH>` | `-s` | Prompt / `800x800` | Target pixel dimensions (e.g. `800x800`, `1200x628`, `1080*1080`) |
+| `--format <jpg\|webp>` | `-f` | `jpg` | Output format: `jpg` (mozjpeg) or `webp` (25–35% smaller, great for Shopify) |
 | `--dir <path>` | `-d` | Saved config / cwd | Working folder containing `input/` and `output/` |
 | `--input <path>` | `-i` | `<dir>/input` | Custom input folder path |
 | `--output <path>` | `-o` | `<dir>/output` | Custom output folder path |
-| `--quality <1-100>` | `-q` | `85` | JPEG compression quality (`mozjpeg`) |
+| `--quality <1-100>` | `-q` | `85` | Output quality (JPG mozjpeg or WebP) |
 | `--bg <hex>` | — | `#ffffff` | Background fill color for transparent PNGs |
 | `--setup` | — | `false` | Re-prompt and save a new default working folder |
 | `--reset` | — | `false` | Clear saved working folder config (`.imagerc.json`) |
@@ -131,11 +135,17 @@ npm start
 # Change your saved working folder anytime
 npm run setup
 
-# Process a specific folder directly without prompts
+# Process a specific folder directly without prompts (JPG, default)
 node bin/cli.js --dir "~/Desktop/my-products" --size 800x800
+
+# Output WebP instead of JPG (25-35% smaller — ideal for Shopify/WooCommerce)
+node bin/cli.js --dir "~/Desktop/my-products" --size 800x800 --format webp
 
 # Custom input/output folders with 90% quality and light-gray background for PNGs
 node bin/cli.js --input ./raw --output ./ready --size 1200x1200 --quality 90 --bg "#f5f5f5"
+
+# WebP with custom quality
+node bin/cli.js --input ./raw --output ./ready --size 800x800 --format webp --quality 80
 ```
 
 ---

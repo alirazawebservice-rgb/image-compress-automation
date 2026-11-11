@@ -2,6 +2,8 @@ const MAX_DIMENSION = 16384;
 const DEFAULT_QUALITY = 85;
 const DEFAULT_BG = { r: 255, g: 255, b: 255 };
 
+const VALID_FORMATS = new Set(['jpg', 'webp']);
+
 const VALUE_FLAGS = {
   '--dir': 'dir',
   '-d': 'dir',
@@ -14,6 +16,8 @@ const VALUE_FLAGS = {
   '--quality': 'quality',
   '-q': 'quality',
   '--bg': 'bg',
+  '--format': 'format',
+  '-f': 'format',
 };
 
 const BOOLEAN_FLAGS = {
@@ -84,6 +88,21 @@ function parseColor(rawHex) {
 }
 
 /**
+ * Parse output format string — must be "jpg" or "webp".
+ * @param {string} rawFormat
+ * @returns {string}
+ */
+function parseFormat(rawFormat) {
+  const val = typeof rawFormat === 'string' ? rawFormat.trim().toLowerCase() : '';
+  if (!VALID_FORMATS.has(val)) {
+    throw new Error(
+      `Invalid format "${rawFormat}". Supported values: jpg, webp.`
+    );
+  }
+  return val;
+}
+
+/**
  * Parse JPEG quality integer between 1 and 100.
  * @param {string} rawQuality
  * @returns {number}
@@ -114,7 +133,8 @@ function parseQuality(rawQuality) {
  *   output: string | undefined,
  *   sizeArg: string | undefined,
  *   quality: number,
- *   bg: { r: number, g: number, b: number }
+ *   bg: { r: number, g: number, b: number },
+ *   format: string
  * }}
  */
 function parseArgs(argv = []) {
@@ -131,6 +151,7 @@ function parseArgs(argv = []) {
     sizeArg: undefined,
     quality: DEFAULT_QUALITY,
     bg: { ...DEFAULT_BG },
+    format: 'jpg',
   };
 
   for (let i = 0; i < argv.length; i += 1) {
@@ -174,6 +195,8 @@ function parseArgs(argv = []) {
       options.quality = parseQuality(value);
     } else if (targetKey === 'bg') {
       options.bg = parseColor(value);
+    } else if (targetKey === 'format') {
+      options.format = parseFormat(value);
     } else {
       options[targetKey] = value;
     }
@@ -188,7 +211,7 @@ function parseArgs(argv = []) {
  */
 function formatHelp() {
   return `
-Image Compress Automation — Bulk Resize & JPG Compressor (No Photoshop Needed)
+Image Compress Automation — Bulk Resize & Compressor for JPG and WebP
 
 Usage:
   npm start
@@ -198,22 +221,24 @@ Usage:
 Examples:
   npm start
   node bin/cli.js 800x800
-  node bin/cli.js --dir "D:\\My Store Images" --size 800x800
+  node bin/cli.js 800x800 --format webp
+  node bin/cli.js --dir "D:\\My Store Images" --size 800x800 --format webp
   node bin/cli.js --input ./raw --output ./web --size 1200x628 --quality 85
 
 Options:
-  -s, --size <WxH>       Target dimensions (e.g. 800x800, 1200x628)
-  -d, --dir <path>       Working folder containing input/ and output/ folders
-  -i, --input <path>     Custom input folder (overrides <dir>/input)
-  -o, --output <path>    Custom output folder (overrides <dir>/output)
-  -q, --quality <1-100>  JPG quality (default: 85)
-      --bg <hex>         Background fill for transparent PNGs (default: #ffffff)
-      --setup            Re-ask and save the default working folder
-      --reset            Clear saved working folder configuration
-      --strict           Exit with code 1 if any image is skipped or fails
-  -y, --yes              Skip interactive prompts and use defaults when needed
-  -h, --help             Show this help message
-  -v, --version          Show version number
+  -s, --size <WxH>          Target dimensions (e.g. 800x800, 1200x628)
+  -d, --dir <path>          Working folder containing input/ and output/ folders
+  -i, --input <path>        Custom input folder (overrides <dir>/input)
+  -o, --output <path>       Custom output folder (overrides <dir>/output)
+  -q, --quality <1-100>     Output quality (default: 85)
+  -f, --format <jpg|webp>   Output format: jpg (default) or webp (25-35% smaller)
+      --bg <hex>            Background fill for transparent PNGs (default: #ffffff)
+      --setup               Re-ask and save the default working folder
+      --reset               Clear saved working folder configuration
+      --strict              Exit with code 1 if any image is skipped or fails
+  -y, --yes                 Skip interactive prompts and use defaults when needed
+  -h, --help                Show this help message
+  -v, --version             Show version number
 `.trimStart();
 }
 
@@ -221,6 +246,7 @@ module.exports = {
   MAX_DIMENSION,
   parseSize,
   parseColor,
+  parseFormat,
   parseArgs,
   formatHelp,
 };

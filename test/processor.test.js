@@ -157,4 +157,59 @@ describe('processBatch', () => {
       fs.rmSync(root, { recursive: true, force: true });
     }
   });
+
+  it('outputs a .webp file when format is "webp" and the file is smaller than JPG equivalent', async () => {
+    const { root, inputDir, outputDir } = await makeTempWorkspace();
+    const jpgOutputDir = path.join(root, 'jpg-output');
+    fs.mkdirSync(jpgOutputDir, { recursive: true });
+    try {
+      await sharp({
+        create: { width: 1600, height: 1600, channels: 3, background: { r: 80, g: 160, b: 240 } },
+      })
+        .png()
+        .toFile(path.join(inputDir, 'product.png'));
+
+      const webpSummary = await processBatch({ inputDir, outputDir, width: 800, height: 800, format: 'webp' });
+      assert.equal(webpSummary.converted, 1);
+      assert.equal(webpSummary.failed, 0);
+
+      const webpFile = path.join(outputDir, 'product.webp');
+      assert.equal(fs.existsSync(webpFile), true);
+
+      const webpMeta = await sharp(webpFile).metadata();
+      assert.equal(webpMeta.format, 'webp');
+      assert.equal(webpMeta.width, 800);
+      assert.equal(webpMeta.height, 800);
+
+      // Compare file size: WebP should be ≤ JPG for photographic content
+      const jpgSummary = await processBatch({ inputDir, outputDir: jpgOutputDir, width: 800, height: 800, format: 'jpg' });
+      assert.equal(jpgSummary.converted, 1);
+      const jpgBytes = fs.statSync(path.join(jpgOutputDir, 'product.jpg')).size;
+      const webpBytes = fs.statSync(webpFile).size;
+      assert.ok(webpBytes <= jpgBytes, `Expected WebP (${webpBytes}B) ≤ JPG (${jpgBytes}B)`);
+    } finally {
+      // Windows: sharp may hold file handles briefly; swallow cleanup errors
+      try { fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 }); } catch { /* ignore */ }
+    }
+  });
+
+  it('defaults to JPG when format option is omitted', async () => {
+    const { root, inputDir, outputDir } = await makeTempWorkspace();
+    try {
+      await sharp({
+        create: { width: 400, height: 400, channels: 3, background: { r: 50, g: 50, b: 50 } },
+      })
+        .png()
+        .toFile(path.join(inputDir, 'default-fmt.png'));
+
+      const summary = await processBatch({ inputDir, outputDir, width: 200, height: 200 });
+      assert.equal(summary.converted, 1);
+      const outFile = path.join(outputDir, 'default-fmt.jpg');
+      assert.equal(fs.existsSync(outFile), true);
+      const meta = await sharp(outFile).metadata();
+      assert.equal(meta.format, 'jpeg');
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
 });

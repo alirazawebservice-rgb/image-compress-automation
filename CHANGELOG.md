@@ -2,6 +2,17 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-11-11
+
+### Added
+- **WebP output format** via `--format webp` / `-f webp` flag (`src/parser.js`, `src/processor.js`, `bin/cli.js`).
+  - WebP files are typically **25–35% smaller** than JPG at the same quality setting — ideal for Shopify, WooCommerce, and Google PageSpeed.
+  - Uses `sharp`'s built-in WebP encoder with `effort: 6` for best compression-to-speed balance.
+  - Default format remains `jpg` (backwards-compatible, no existing commands need changes).
+  - Header log now shows selected format: `📐 Target: 800x800px | Format: WebP | Quality: 85%`.
+- `-f` shorthand alias for `--format`.
+- 8 new tests covering format parsing, WebP output, and format defaulting (35 total, all pass).
+
 ## [1.0.0] - 2026-11-10
 
 ### Added

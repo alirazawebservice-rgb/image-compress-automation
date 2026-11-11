@@ -1,13 +1,13 @@
 ---
 name: image-compress-automation
-description: Use when compressing, resizing, or converting bulk product images (PNG, JPG, WEBP) to web-ready JPGs in this repository, setting up a user's working folder on a new machine, or troubleshooting aspect-ratio mismatch errors and CLI flags.
+description: Use when compressing, resizing, or converting bulk product images (PNG, JPG, WEBP) to web-ready JPGs or WebP files in this repository, setting up a user's working folder on a new machine, or troubleshooting aspect-ratio mismatch errors and CLI flags.
 ---
 
 # Image Compress Automation
 
 ## Overview
 
-Bulk-resize and compress product images into web-ready `.jpg` files in seconds using `sharp`, while preserving original filenames, flattening transparent PNGs onto white, and strictly preserving aspect ratios.
+Bulk-resize and compress product images into web-ready `.jpg` or `.webp` files in seconds using `sharp`, while preserving original filenames, flattening transparent PNGs onto white, and strictly preserving aspect ratios.
 
 **Core principle:** Never assume a working drive (`F:\`), never silently fall back to `800x800` without user confirmation, and never crop or distort an image to force mismatched dimensions.
 
@@ -19,6 +19,7 @@ Bulk-resize and compress product images into web-ready `.jpg` files in seconds u
 | `.imagerc.json` absent & no `--dir` given | **Ask the user** for their working folder before running |
 | Target size omitted by user | **Ask the user** for `WxH` (e.g. `800x800`) before running |
 | User gives working folder + size | Run `node bin/cli.js --dir "<folder>" --size "<WxH>"` |
+| User wants WebP instead of JPG | Add `--format webp` (25–35% smaller; great for Shopify/PageSpeed) |
 | User has separate raw & export folders | Run `node bin/cli.js --input "<in>" --output "<out>" --size "<WxH>"` |
 | Aspect-ratio mismatch (`1:2` vs `1:1`) | Do **not** crop/stretch; report suggested matching sizes from output |
 | Transparent PNG background | Automatically flattened onto `#ffffff` (change via `--bg "#hex"`) |
@@ -47,7 +48,8 @@ node bin/cli.js --dir "<working-folder>" --size "<WIDTH>x<HEIGHT>"
 ```
 
 Optional flags when requested by the user:
-- `--quality <1-100>` (default `85`, uses `mozjpeg`)
+- `--format <jpg|webp>` (default `jpg`; use `webp` for 25–35% smaller files — ideal for Shopify, WooCommerce, Google PageSpeed)
+- `--quality <1-100>` (default `85`, applies to both JPG `mozjpeg` and WebP `effort: 6`)
 - `--bg "<#hex>"` (default `#ffffff` for transparent PNG flattening)
 - `--strict` (return exit code `1` if any file is skipped or fails)
 

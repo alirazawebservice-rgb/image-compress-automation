@@ -167,7 +167,7 @@ async function runCli(argv = process.argv.slice(2), deps = {}) {
     if (files.length === 0) {
       log(`📂 Folders are ready!`);
       log(`   Drop your PNG/JPG/WEBP images into: ${folders.inputDir}`);
-      log(`   Compressed JPGs will save into:      ${folders.outputDir}`);
+      log(`   Compressed files (JPG or WebP) will save into: ${folders.outputDir}`);
       log('   Then run this command again to compress them.\n');
       return 0;
     }
@@ -188,7 +188,8 @@ async function runCli(argv = process.argv.slice(2), deps = {}) {
     }
 
     const ratioLabel = simplifyRatio(target.width, target.height);
-    log(`\n📐 Target: ${target.width} x ${target.height}px  (ratio ${ratioLabel})  |  Quality: ${options.quality}%`);
+    const fmtLabel = options.format === 'webp' ? 'WebP' : 'JPG';
+    log(`\n📐 Target: ${target.width} x ${target.height}px  (ratio ${ratioLabel})  |  Format: ${fmtLabel}  |  Quality: ${options.quality}%`);
     log(`📂 Input:  ${folders.inputDir}`);
     log(`📁 Output: ${folders.outputDir}\n`);
     log(`🗂️  Processing ${files.length} image(s)...\n`);
@@ -200,6 +201,7 @@ async function runCli(argv = process.argv.slice(2), deps = {}) {
       height: target.height,
       quality: options.quality,
       bg: options.bg,
+      format: options.format,
       onProgress: (res) => printFileResult(res, log),
     });
 

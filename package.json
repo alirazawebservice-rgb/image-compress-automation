@@ -1,7 +1,7 @@
 {
   "name": "image-compress-automation",
-  "version": "1.0.0",
-  "description": "Zero-Photoshop bulk image resizer & JPG compressor for small businesses — preserves filenames, enforces aspect ratios, cross-platform CLI + AI skill.",
+  "version": "1.1.0",
+  "description": "Zero-Photoshop bulk image resizer & JPG/WebP compressor for small businesses — preserves filenames, enforces aspect ratios, cross-platform CLI + AI skill.",
   "main": "bin/cli.js",
   "bin": {
     "image-compress": "./bin/cli.js"

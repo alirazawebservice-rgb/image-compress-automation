@@ -31,7 +31,7 @@ function discoverImages(inputDir) {
 }
 
 /**
- * Convert and validate a single image file into target JPEG dimensions.
+ * Convert and validate a single image file into target dimensions.
  * @param {object} params
  * @returns {Promise<object>}
  */
@@ -43,10 +43,12 @@ async function processSingleImage({
   height,
   quality,
   bg,
+  format,
   usedOutputKeys,
 }) {
   const inputPath = path.join(inputDir, file);
-  const outputName = `${path.parse(file).name}.jpg`;
+  const ext = format === 'webp' ? '.webp' : '.jpg';
+  const outputName = `${path.parse(file).name}${ext}`;
   const outputKey = outputName.toLowerCase();
 
   if (usedOutputKeys.has(outputKey)) {
@@ -90,12 +92,16 @@ async function processSingleImage({
     }
 
     const inputBytes = fs.statSync(inputPath).size;
-    const outputBuffer = await sharp(inputPath)
+    const pipeline = sharp(inputPath)
       .rotate()
       .flatten({ background: bg })
-      .resize(width, height, { fit: 'fill' })
-      .jpeg({ quality, mozjpeg: true })
-      .toBuffer();
+      .resize(width, height, { fit: 'fill' });
+
+    const outputBuffer = await (
+      format === 'webp'
+        ? pipeline.webp({ quality, effort: 6 })
+        : pipeline.jpeg({ quality, mozjpeg: true })
+    ).toBuffer();
 
     const outputPath = path.join(outputDir, outputName);
     fs.writeFileSync(outputPath, outputBuffer);
@@ -132,6 +138,7 @@ async function processSingleImage({
  * @param {number} options.height
  * @param {number} [options.quality=85]
  * @param {{ r: number, g: number, b: number }} [options.bg]
+ * @param {string} [options.format='jpg']  Output format: 'jpg' or 'webp'
  * @param {(result: object) => void} [options.onProgress]
  * @returns {Promise<{
  *   total: number,
@@ -151,6 +158,7 @@ async function processBatch({
   height,
   quality = DEFAULT_QUALITY,
   bg = DEFAULT_BG,
+  format = 'jpg',
   onProgress,
 }) {
   fs.mkdirSync(outputDir, { recursive: true });
@@ -177,6 +185,7 @@ async function processBatch({
       height,
       quality,
       bg,
+      format,
       usedOutputKeys,
     });
 

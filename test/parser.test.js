@@ -51,6 +51,7 @@ describe('parseArgs', () => {
       sizeArg: undefined,
       quality: 85,
       bg: { r: 255, g: 255, b: 255 },
+      format: 'jpg',
     });
   });
 
@@ -81,13 +82,63 @@ describe('parseArgs', () => {
   });
 });
 
+describe('parseArgs --format flag', () => {
+  it('defaults format to "jpg" when flag is omitted', () => {
+    const parsed = parseArgs([]);
+    assert.equal(parsed.format, 'jpg');
+  });
+
+  it('accepts --format webp', () => {
+    const parsed = parseArgs(['--format', 'webp']);
+    assert.equal(parsed.format, 'webp');
+  });
+
+  it('accepts -f webp shorthand', () => {
+    const parsed = parseArgs(['-f', 'webp']);
+    assert.equal(parsed.format, 'webp');
+  });
+
+  it('accepts --format jpg explicitly', () => {
+    const parsed = parseArgs(['--format', 'jpg']);
+    assert.equal(parsed.format, 'jpg');
+  });
+
+  it('throws for unsupported format values', () => {
+    assert.throws(() => parseArgs(['--format', 'gif']), /Invalid format/i);
+    assert.throws(() => parseArgs(['--format', 'png']), /Invalid format/i);
+    assert.throws(() => parseArgs(['-f', '']), /Invalid format/i);
+  });
+});
+
+describe('parseArgs defaults include format', () => {
+  it('parses defaults when argv is empty including format: jpg', () => {
+    const parsed = parseArgs([]);
+    assert.deepEqual(parsed, {
+      help: false,
+      version: false,
+      setup: false,
+      reset: false,
+      yes: false,
+      strict: false,
+      dir: undefined,
+      input: undefined,
+      output: undefined,
+      sizeArg: undefined,
+      quality: 85,
+      bg: { r: 255, g: 255, b: 255 },
+      format: 'jpg',
+    });
+  });
+});
+
 describe('formatHelp', () => {
-  it('documents CLI flags and examples', () => {
+  it('documents CLI flags and examples including --format', () => {
     const help = formatHelp();
     assert.match(help, /--dir/);
     assert.match(help, /--size/);
     assert.match(help, /--quality/);
     assert.match(help, /--strict/);
     assert.match(help, /--reset/);
+    assert.match(help, /--format/);
   });
 });
