@@ -1,11 +1,26 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const sharp = require('sharp');
-const { getEffectiveDimensions, validateAspectRatio } = require('./ratio');
+const { getDefaultQuality, parseFormat } = require('./parser');
+const { getEffectiveDimensions, resolveTargetDimensions } = require('./ratio');
 
-const SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp']);
-const DEFAULT_QUALITY = 85;
+const SUPPORTED_EXTENSIONS = new Set(['.png', '.jpg', '.jpeg', '.webp', '.avif']);
 const DEFAULT_BG = { r: 255, g: 255, b: 255 };
+
+const FORMAT_SPECS = {
+  jpg: {
+    ext: '.jpg',
+    encode: (pipeline, quality) => pipeline.jpeg({ quality, mozjpeg: true }),
+  },
+  webp: {
+    ext: '.webp',
+    encode: (pipeline, quality) => pipeline.webp({ quality, effort: 6 }),
+  },
+  avif: {
+    ext: '.avif',
+    encode: (pipeline, quality) => pipeline.avif({ quality, effort: 4 }),
+  },
+};
 
 /**
  * Discover supported image files inside inputDir, ignoring dotfiles and subdirectories.
@@ -43,12 +58,11 @@ async function processSingleImage({
   height,
   quality,
   bg,
-  format,
+  formatSpec,
   usedOutputKeys,
 }) {
   const inputPath = path.join(inputDir, file);
-  const ext = format === 'webp' ? '.webp' : '.jpg';
-  const outputName = `${path.parse(file).name}${ext}`;
+  const outputName = `${path.parse(file).name}${formatSpec.ext}`;
   const outputKey = outputName.toLowerCase();
 
   if (usedOutputKeys.has(outputKey)) {
@@ -76,8 +90,17 @@ async function processSingleImage({
       };
     }
 
-    const ratioCheck = validateAspectRatio(effective.width, effective.height, width, height);
-    if (!ratioCheck.ok) {
+    const dimCheck = resolveTargetDimensions(effective.width, effective.height, width, height);
+    if (!dimCheck.ok) {
+      if (dimCheck.reason === 'dimension-out-of-range') {
+        return {
+          file,
+          outputName,
+          status: 'failed',
+          reason: 'dimension-out-of-range',
+          error: dimCheck.error,
+        };
+      }
       return {
         file,
         outputName,
@@ -85,9 +108,9 @@ async function processSingleImage({
         reason: 'aspect-ratio-mismatch',
         srcWidth: effective.width,
         srcHeight: effective.height,
-        srcRatioLabel: ratioCheck.srcRatioLabel,
-        targetRatioLabel: ratioCheck.targetRatioLabel,
-        suggestedDimensions: ratioCheck.suggestedDimensions,
+        srcRatioLabel: dimCheck.srcRatioLabel,
+        targetRatioLabel: dimCheck.targetRatioLabel,
+        suggestedDimensions: dimCheck.suggestedDimensions,
       };
     }
 
@@ -95,13 +118,9 @@ async function processSingleImage({
     const pipeline = sharp(inputPath)
       .rotate()
       .flatten({ background: bg })
-      .resize(width, height, { fit: 'fill' });
+      .resize(dimCheck.width, dimCheck.height, { fit: 'fill' });
 
-    const outputBuffer = await (
-      format === 'webp'
-        ? pipeline.webp({ quality, effort: 6 })
-        : pipeline.jpeg({ quality, mozjpeg: true })
-    ).toBuffer();
+    const outputBuffer = await formatSpec.encode(pipeline, quality).toBuffer();
 
     const outputPath = path.join(outputDir, outputName);
     fs.writeFileSync(outputPath, outputBuffer);
@@ -113,8 +132,9 @@ async function processSingleImage({
       status: 'converted',
       srcWidth: effective.width,
       srcHeight: effective.height,
-      width,
-      height,
+      width: dimCheck.width,
+      height: dimCheck.height,
+      quality,
       inputBytes,
       outputBytes: outputBuffer.length,
     };
@@ -130,15 +150,15 @@ async function processSingleImage({
 }
 
 /**
- * Process all supported images from inputDir into outputDir at target width x height.
+ * Process all supported images from inputDir into outputDir at target height or exact WxH.
  * @param {object} options
  * @param {string} options.inputDir
  * @param {string} options.outputDir
- * @param {number} options.width
+ * @param {number | null | undefined} [options.width]
  * @param {number} options.height
- * @param {number} [options.quality=85]
+ * @param {number} [options.quality]
  * @param {{ r: number, g: number, b: number }} [options.bg]
- * @param {string} [options.format='jpg']  Output format: 'jpg' or 'webp'
+ * @param {'jpg' | 'webp' | 'avif'} [options.format='jpg']
  * @param {(result: object) => void} [options.onProgress]
  * @returns {Promise<{
  *   total: number,
@@ -154,13 +174,17 @@ async function processSingleImage({
 async function processBatch({
   inputDir,
   outputDir,
-  width,
+  width = null,
   height,
-  quality = DEFAULT_QUALITY,
+  quality,
   bg = DEFAULT_BG,
   format = 'jpg',
   onProgress,
 }) {
+  const normalizedFormat = parseFormat(format);
+  const formatSpec = FORMAT_SPECS[normalizedFormat];
+  const resolvedQuality = quality ?? getDefaultQuality(normalizedFormat);
+
   fs.mkdirSync(outputDir, { recursive: true });
   const files = discoverImages(inputDir);
   const usedOutputKeys = new Set();
@@ -183,9 +207,9 @@ async function processBatch({
       outputDir,
       width,
       height,
-      quality,
+      quality: resolvedQuality,
       bg,
-      format,
+      formatSpec,
       usedOutputKeys,
     });
 

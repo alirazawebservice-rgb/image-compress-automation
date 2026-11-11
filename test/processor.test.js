@@ -15,6 +15,14 @@ async function makeTempWorkspace() {
   return { root, inputDir, outputDir };
 }
 
+function safeCleanup(root) {
+  try {
+    fs.rmSync(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+  } catch {
+    /* Windows sharp file lock cleanup fallback */
+  }
+}
+
 describe('discoverImages', () => {
   it('ignores dotfiles, unsupported files, and subdirectories while sorting supported images', async () => {
     const { root, inputDir } = await makeTempWorkspace();
@@ -25,11 +33,12 @@ describe('discoverImages', () => {
       fs.mkdirSync(path.join(inputDir, 'nested'));
       fs.writeFileSync(path.join(inputDir, 'b-photo.PNG'), 'x');
       fs.writeFileSync(path.join(inputDir, 'a-photo.webp'), 'x');
+      fs.writeFileSync(path.join(inputDir, 'c-photo.avif'), 'x');
 
       const found = discoverImages(inputDir);
-      assert.deepEqual(found, ['a-photo.webp', 'b-photo.PNG']);
+      assert.deepEqual(found, ['a-photo.webp', 'b-photo.PNG', 'c-photo.avif']);
     } finally {
-      fs.rmSync(root, { recursive: true, force: true });
+      safeCleanup(root);
     }
   });
 });
@@ -209,7 +218,111 @@ describe('processBatch', () => {
       const meta = await sharp(outFile).metadata();
       assert.equal(meta.format, 'jpeg');
     } finally {
-      fs.rmSync(root, { recursive: true, force: true });
+      safeCleanup(root);
+    }
+  });
+
+  it('outputs .avif files when format is "avif"', async () => {
+    const { root, inputDir, outputDir } = await makeTempWorkspace();
+    try {
+      await sharp({
+        create: { width: 800, height: 800, channels: 3, background: { r: 30, g: 140, b: 190 } },
+      })
+        .png()
+        .toFile(path.join(inputDir, 'mug.png'));
+
+      const summary = await processBatch({ inputDir, outputDir, width: 400, height: 400, format: 'avif' });
+      assert.equal(summary.converted, 1);
+      assert.equal(summary.failed, 0);
+      assert.equal(summary.results[0].quality, 65);
+
+      const avifFile = path.join(outputDir, 'mug.avif');
+      assert.equal(fs.existsSync(avifFile), true);
+      const meta = await sharp(avifFile).metadata();
+      assert.equal(meta.format, 'heif');
+      assert.equal(meta.compression, 'av1');
+      assert.equal(meta.width, 400);
+      assert.equal(meta.height, 400);
+    } finally {
+      safeCleanup(root);
+    }
+  });
+
+  it('resizes mixed aspect ratios cleanly to target height when width is null', async () => {
+    const { root, inputDir, outputDir } = await makeTempWorkspace();
+    try {
+      await sharp({
+        create: { width: 1600, height: 1600, channels: 3, background: { r: 100, g: 100, b: 200 } },
+      })
+        .png()
+        .toFile(path.join(inputDir, 'square.png'));
+
+      await sharp({
+        create: { width: 1600, height: 800, channels: 3, background: { r: 200, g: 100, b: 100 } },
+      })
+        .png()
+        .toFile(path.join(inputDir, 'wide.png'));
+
+      const summary = await processBatch({
+        inputDir,
+        outputDir,
+        width: null,
+        height: 800,
+        format: 'webp',
+      });
+
+      assert.equal(summary.converted, 2);
+      assert.equal(summary.skipped, 0);
+      assert.equal(summary.failed, 0);
+
+      const sqMeta = await sharp(path.join(outputDir, 'square.webp')).metadata();
+      assert.equal(sqMeta.width, 800);
+      assert.equal(sqMeta.height, 800);
+
+      const wideMeta = await sharp(path.join(outputDir, 'wide.webp')).metadata();
+      assert.equal(wideMeta.width, 1600);
+      assert.equal(wideMeta.height, 800);
+    } finally {
+      safeCleanup(root);
+    }
+  });
+
+  it('respects EXIF orientation in height-only mode and isolates out-of-range ratios', async () => {
+    const { root, inputDir, outputDir } = await makeTempWorkspace();
+    try {
+      await sharp({
+        create: { width: 800, height: 400, channels: 3, background: { r: 40, g: 160, b: 90 } },
+      })
+        .jpeg()
+        .withMetadata({ orientation: 6 })
+        .toBuffer()
+        .then((buf) => fs.writeFileSync(path.join(inputDir, 'portrait-exif.jpg'), buf));
+
+      await sharp({
+        create: { width: 5000, height: 100, channels: 3, background: { r: 200, g: 50, b: 50 } },
+      })
+        .png()
+        .toFile(path.join(inputDir, 'too-wide.png'));
+
+      const summary = await processBatch({
+        inputDir,
+        outputDir,
+        width: null,
+        height: 400,
+        format: 'jpg',
+      });
+
+      assert.equal(summary.converted, 1);
+      assert.equal(summary.failed, 1);
+
+      const portraitMeta = await sharp(path.join(outputDir, 'portrait-exif.jpg')).metadata();
+      assert.equal(portraitMeta.width, 200);
+      assert.equal(portraitMeta.height, 400);
+
+      const failedEntry = summary.results.find((r) => r.file === 'too-wide.png');
+      assert.equal(failedEntry.reason, 'dimension-out-of-range');
+    } finally {
+      safeCleanup(root);
     }
   });
 });
