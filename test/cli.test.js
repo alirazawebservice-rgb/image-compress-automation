@@ -5,7 +5,7 @@ const os = require('node:os');
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const sharp = require('sharp');
-const { promptForFolder, promptForSize } = require('../src/prompt');
+const { promptForFolder, promptForSize, promptForFormat } = require('../src/prompt');
 const { runCli } = require('../bin/cli');
 
 describe('prompt helpers', () => {
@@ -17,12 +17,14 @@ describe('prompt helpers', () => {
     };
     const folder = await promptForFolder({ defaultDir: '/tmp/work', isTTY: false, ask });
     const size = await promptForSize({ imageCount: 2, defaultSize: '800x800', isTTY: false, ask });
+    const format = await promptForFormat({ defaultFormat: 'jpg', isTTY: false, ask });
     assert.equal(folder, '/tmp/work');
     assert.equal(size, '800x800');
+    assert.equal(format, 'jpg');
     assert.equal(called, false);
   });
 
-  it('asks user for folder and size in TTY mode and uses entered values', async () => {
+  it('asks user for folder, size, and format in TTY mode and uses entered values', async () => {
     const folder = await promptForFolder({
       defaultDir: '/tmp/work',
       isTTY: true,
@@ -34,8 +36,14 @@ describe('prompt helpers', () => {
       isTTY: true,
       ask: async () => '1200x628',
     });
+    const format = await promptForFormat({
+      defaultFormat: 'jpg',
+      isTTY: true,
+      ask: async () => '  avif ',
+    });
     assert.equal(folder, 'D:\\Store Images');
     assert.equal(size, '1200x628');
+    assert.equal(format, 'avif');
   });
 });
 
@@ -115,5 +123,80 @@ describe('runCli end-to-end', () => {
       encoding: 'utf8',
     });
     assert.match(verOut.trim(), /^v\d+\.\d+\.\d+$/);
+  });
+
+  it('prompts for size and jpg/webp/avif format in TTY mode, supports height-only 800px, and skips format prompt if --format is passed', async () => {
+    const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'ica-tty-'));
+    const inputDir = path.join(tempRoot, 'input');
+    const outputDir = path.join(tempRoot, 'output');
+    fs.mkdirSync(inputDir, { recursive: true });
+
+    try {
+      await sharp({
+        create: { width: 1600, height: 1600, channels: 3, background: { r: 20, g: 120, b: 200 } },
+      })
+        .png()
+        .toFile(path.join(inputDir, 'sq.png'));
+
+      const answers = ['800px', 'avif'];
+      const prompts = [];
+      const code = await runCli(['--dir', tempRoot], {
+        cwd: tempRoot,
+        configDir: tempRoot,
+        isTTY: true,
+        log: () => {},
+        error: () => {},
+        ask: async (q) => {
+          prompts.push(q);
+          return answers.shift();
+        },
+      });
+
+      assert.equal(code, 0);
+      assert.equal(prompts.length, 2);
+      assert.match(prompts[1], /jpg\s*\/\s*webp\s*\/\s*avif/i);
+      const avifMeta = await sharp(path.join(outputDir, 'sq.avif')).metadata();
+      assert.equal(avifMeta.format, 'heif');
+      assert.equal(avifMeta.compression, 'av1');
+      assert.equal(avifMeta.width, 800);
+      assert.equal(avifMeta.height, 800);
+
+      // Passing --format skips the interactive format prompt cleanly
+      const promptsWithFlag = [];
+      const flagCode = await runCli(['--dir', tempRoot, '--format', 'webp'], {
+        cwd: tempRoot,
+        configDir: tempRoot,
+        isTTY: true,
+        log: () => {},
+        error: () => {},
+        ask: async (q) => {
+          promptsWithFlag.push(q);
+          return '800px';
+        },
+      });
+      assert.equal(flagCode, 0);
+      assert.equal(promptsWithFlag.length, 1);
+      assert.equal(fs.existsSync(path.join(outputDir, 'sq.webp')), true);
+
+      // Invalid format typed interactively returns 1 with clear error
+      const errs = [];
+      const badAnswers = ['800px', 'gif'];
+      const badCode = await runCli(['--dir', tempRoot], {
+        cwd: tempRoot,
+        configDir: tempRoot,
+        isTTY: true,
+        log: () => {},
+        error: (msg) => errs.push(msg),
+        ask: async () => badAnswers.shift(),
+      });
+      assert.equal(badCode, 1);
+      assert.match(errs.join('\n'), /Invalid format/i);
+    } finally {
+      try {
+        fs.rmSync(tempRoot, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      } catch {
+        /* ignore Windows sharp lock */
+      }
+    }
   });
 });

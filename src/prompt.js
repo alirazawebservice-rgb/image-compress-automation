@@ -31,7 +31,7 @@ async function promptForFolder({ defaultDir, isTTY, ask }) {
 }
 
 /**
- * Prompt the user for target dimensions when no --size argument was provided.
+ * Prompt the user for target dimensions or single height when no --size argument was provided.
  * @param {{ imageCount: number, defaultSize?: string, isTTY: boolean, ask: (q: string) => Promise<string> }} params
  * @returns {Promise<string>}
  */
@@ -41,14 +41,32 @@ async function promptForSize({ imageCount, defaultSize = '800x800', isTTY, ask }
   }
 
   const answer = await ask(
-    `📐 Found ${imageCount} image(s). Enter target size (e.g. 800x800, 1200x628) [Enter for ${defaultSize}]: `
+    `📐 Found ${imageCount} image(s). Enter height (800px) or WxH (800x800) [Enter for ${defaultSize}]: `
   );
   const trimmed = typeof answer === 'string' ? answer.trim() : '';
   return trimmed || defaultSize;
+}
+
+/**
+ * Prompt the user for output image format when no --format flag was provided.
+ * @param {{ defaultFormat?: string, isTTY: boolean, ask: (q: string) => Promise<string> }} params
+ * @returns {Promise<string>}
+ */
+async function promptForFormat({ defaultFormat = 'jpg', isTTY, ask }) {
+  if (!isTTY) {
+    return defaultFormat;
+  }
+
+  const answer = await ask(
+    `🖼️ Choose output format (jpg / webp / avif) [Enter for ${defaultFormat}]: `
+  );
+  const trimmed = typeof answer === 'string' ? answer.trim() : '';
+  return trimmed || defaultFormat;
 }
 
 module.exports = {
   createPromptSession,
   promptForFolder,
   promptForSize,
+  promptForFormat,
 };

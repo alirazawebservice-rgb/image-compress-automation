@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 const path = require('node:path');
 const pkg = require('../package.json');
-const { parseArgs, parseSize, formatHelp } = require('../src/parser');
+const { parseArgs, parseSize, parseFormat, getDefaultQuality, formatHelp } = require('../src/parser');
 const { simplifyRatio } = require('../src/ratio');
 const {
   normalizeUserPath,
@@ -12,7 +12,13 @@ const {
   ensureFolders,
 } = require('../src/config');
 const { discoverImages, processBatch } = require('../src/processor');
-const { createPromptSession, promptForFolder, promptForSize } = require('../src/prompt');
+const { createPromptSession, promptForFolder, promptForSize, promptForFormat } = require('../src/prompt');
+
+const FORMAT_LABELS = {
+  jpg: 'JPG',
+  webp: 'WebP',
+  avif: 'AVIF',
+};
 
 /**
  * Resolve input/output folders from CLI flags, saved config, or interactive prompt.
@@ -166,8 +172,8 @@ async function runCli(argv = process.argv.slice(2), deps = {}) {
     const files = discoverImages(folders.inputDir);
     if (files.length === 0) {
       log(`📂 Folders are ready!`);
-      log(`   Drop your PNG/JPG/WEBP images into: ${folders.inputDir}`);
-      log(`   Compressed files (JPG or WebP) will save into: ${folders.outputDir}`);
+      log(`   Drop your PNG/JPG/WEBP/AVIF images into: ${folders.inputDir}`);
+      log(`   Compressed files (JPG / WebP / AVIF) will save into: ${folders.outputDir}`);
       log('   Then run this command again to compress them.\n');
       return 0;
     }
@@ -187,9 +193,28 @@ async function runCli(argv = process.argv.slice(2), deps = {}) {
       return 1;
     }
 
-    const ratioLabel = simplifyRatio(target.width, target.height);
-    const fmtLabel = options.format === 'webp' ? 'WebP' : 'JPG';
-    log(`\n📐 Target: ${target.width} x ${target.height}px  (ratio ${ratioLabel})  |  Format: ${fmtLabel}  |  Quality: ${options.quality}%`);
+    let formatRaw = options.format;
+    if (!formatRaw) {
+      formatRaw = options.yes
+        ? 'jpg'
+        : await promptForFormat({ defaultFormat: 'jpg', isTTY, ask });
+    }
+
+    let format;
+    try {
+      format = parseFormat(formatRaw);
+    } catch (err) {
+      error(`❌ ${err.message}`);
+      return 1;
+    }
+
+    const effectiveQuality = options.quality ?? getDefaultQuality(format);
+    const fmtLabel = FORMAT_LABELS[format] || format.toUpperCase();
+    const targetSummary =
+      target.width === null
+        ? `${target.height}px height (preserve ratio)`
+        : `${target.width} x ${target.height}px  (ratio ${simplifyRatio(target.width, target.height)})`;
+    log(`\n📐 Target: ${targetSummary}  |  Format: ${fmtLabel}  |  Quality: ${effectiveQuality}%`);
     log(`📂 Input:  ${folders.inputDir}`);
     log(`📁 Output: ${folders.outputDir}\n`);
     log(`🗂️  Processing ${files.length} image(s)...\n`);
@@ -199,9 +224,9 @@ async function runCli(argv = process.argv.slice(2), deps = {}) {
       outputDir: folders.outputDir,
       width: target.width,
       height: target.height,
-      quality: options.quality,
+      quality: effectiveQuality,
       bg: options.bg,
-      format: options.format,
+      format,
       onProgress: (res) => printFileResult(res, log),
     });
 
