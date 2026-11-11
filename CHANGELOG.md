@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.2.0] - 2026-11-11
+
+### Added
+- **Single-height proportional sizing (`800px` / `800`):** Enter a single number in `npm start`, `--size 800px`, or positional args to set target height and auto-calculate each photo's exact width after EXIF orientation (`src/parser.js`, `src/ratio.js`, `src/processor.js`) — never losing aspect ratio even on mixed-ratio product batches.
+- **AVIF output & input support (`--format avif`):** Added ultra-lightweight `.avif` encoding (`effort: 4`) and `.avif` input discovery (`SUPPORTED_EXTENSIONS`), normalized uppercase/leading-dot/alias (`jpeg` → `jpg`) handling in `parseFormat()`.
+- **Interactive format prompt (`npm start`):** `promptForFormat` (`src/prompt.js`, `bin/cli.js`) now asks `Choose output format (jpg / webp / avif) [Enter for jpg]` right after size when `--format` wasn't passed explicitly.
+- **Format-smart default quality (`getDefaultQuality`):** Defaults to `85` for JPG/WebP and `65` for AVIF (giving ~30% smaller files than JPG instead of oversized `q85` AVIF), while honoring explicit `--quality`.
+- Restored tracked `input/.gitkeep` and `output/.gitkeep` placeholders.
+
 ## [1.1.0] - 2026-11-11
 
 ### Added

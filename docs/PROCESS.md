@@ -52,8 +52,8 @@ You have **two easy choices**:
    - Linux: `/home/alex/store-images`
 
 It remembers your choice in a local `.imagerc.json` file and automatically creates two folders inside it:
-- **`input`** — where you drop original PNG / JPG / WEBP files
-- **`output`** — where compressed, resized JPG files appear
+- **`input`** — where you drop original PNG / JPG / WEBP / AVIF files
+- **`output`** — where compressed, resized JPG / WebP / AVIF files appear
 
 > **Want to change your folder later?** Run `npm run setup` anytime, or pass `--dir "path\to\folder"` for a one-off run.
 
@@ -66,15 +66,16 @@ It remembers your choice in a local `.imagerc.json` file and automatically creat
    ```bash
    npm start
    ```
-3. Type the pixel size you need and press **Enter**:
+3. Enter your target **height** (like `800px` — automatically keeps every image's natural ratio) or exact **`WxH`** (`800x800`), then choose **`jpg`**, **`webp`**, or **`avif`**:
    ```text
-   📐 Found 20 image(s). Enter target size (e.g. 800x800, 1200x628) [Enter for 800x800]: 800x800
+   📐 Found 20 image(s). Enter height (800px) or WxH (800x800) [Enter for 800x800]: 800px
+   🖼️ Choose output format (jpg / webp / avif) [Enter for jpg]: webp
    ```
-4. Open your **`output`** folder — all your `.jpg` images are ready with the **exact same filenames** and tiny file sizes for fast website loading!
+4. Open your **`output`** folder — all your `.jpg`, `.webp`, or `.avif` images are ready with the **exact same filenames** and tiny file sizes for fast website loading!
 
-> **Fastest one-liner (skip the size question):**
+> **Fastest one-liner (skip the questions):**
 > ```bash
-> node bin/cli.js 800x800
+> node bin/cli.js 800px --format webp
 > ```
 
 ---
@@ -83,11 +84,12 @@ It remembers your choice in a local `.imagerc.json` file and automatically creat
 
 | Case | What Happens |
 |---|---|
-| **Square photo (`1600×1600`) → `800x800`** | ✅ Resizes cleanly to `800×800` JPG, ~95% smaller. |
+| **Square photo (`1600×1600`) → `800px` or `800x800`** | ✅ Resizes cleanly to `800×800` JPG/WebP/AVIF, ~95% smaller. |
+| **Wide photo (`1920×1080`) → `800px` (height only)** | ✅ Keeps natural `16:9` ratio automatically (`1422×800`). |
 | **Transparent PNG cutout** | ✅ Transparent area becomes clean white (`#ffffff`), never black. Need another color? Add `--bg "#f5f5f5"`. |
-| **Tall `1:2` banner (`500×1000`) → `800x800`** | ❌ Safely skipped with an error and tip (`Try 800x1600 or 400x800`). Your image is **never** stretched or cropped! |
+| **Tall `1:2` banner (`500×1000`) → exact `800x800`** | ❌ Safely skipped with an error and tip (`Try 800x1600 or 400x800`). Your image is **never** stretched or cropped! |
 | **Phone photo rotated via EXIF** | ✅ Automatically reads true orientation and rotates pixels properly before checking aspect ratio. |
-| **Both `logo.png` and `logo.jpg` in `input/`** | ⚠️ Second file is skipped with a collision notice instead of silently overwriting the first `logo.jpg`. |
+| **Both `logo.png` and `logo.jpg` in `input/`** | ⚠️ Second file is skipped with a collision notice instead of silently overwriting the first output file. |
 | **Non-image files or subfolders in `input/`** | ✅ Ignored safely without crashing your batch. |
 
 ---
@@ -96,9 +98,9 @@ It remembers your choice in a local `.imagerc.json` file and automatically creat
 
 - **`node` is not recognized / command not found:** Close and reopen PowerShell/Terminal after installing Node.js from [nodejs.org](https://nodejs.org/).
 - **`Cannot find module 'sharp'`:** Make sure you ran `npm install` inside the project folder first.
-- **`Found 0 images` / `Folders are ready!`:** Put `.png`, `.jpg`, `.jpeg`, or `.webp` files directly inside the `input` folder (not inside subfolders).
-- **Files look slightly blurry or too big?** Adjust `--quality` (default is `85`):
+- **`Found 0 images` / `Folders are ready!`:** Put `.png`, `.jpg`, `.jpeg`, `.webp`, or `.avif` files directly inside the `input` folder (not inside subfolders).
+- **Files look slightly blurry or too big?** Adjust `--quality` (default is `85` for JPG/WebP and `65` for AVIF):
   ```bash
-  node bin/cli.js 800x800 --quality 90   # sharper, slightly larger file
-  node bin/cli.js 800x800 --quality 75   # smaller file for thumbnails
+  node bin/cli.js 800px --format webp --quality 90   # sharper, slightly larger file
+  node bin/cli.js 800px --format avif --quality 60   # ultra-light for slow connections
   ```

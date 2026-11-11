@@ -4,9 +4,11 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 
 **Zero-Photoshop bulk image resizer & compressor for small businesses.**  
-Turn **40+ MB** of heavy PNG product images into **fast-loading JPG or WebP** files in **under 10 seconds**—on Windows, macOS, or Linux.
+Turn **40+ MB** of heavy PNG product images into **fast-loading JPG, WebP, or AVIF** files in **under 10 seconds**—on Windows, macOS, or Linux.
 
-> **New in v1.1:** Add `--format webp` to get **WebP output** — typically **25–35% smaller** than JPG at the same quality. Perfect for Shopify, WooCommerce, and Google PageSpeed.
+> **New in v1.2:**
+> - Enter a **single height like `800px`** to auto-calculate each photo's exact width and **never lose aspect ratio**!
+> - Interactive prompt now asks **format (`jpg / webp / avif`)** right after size — or pass `--format webp` / `--format avif` on the CLI.
 
 ---
 
@@ -16,10 +18,10 @@ Small e-commerce stores (Shopify, WooCommerce, Etsy) often receive high-resoluti
 
 With **Image Compress Automation**:
 - ✅ **Works on any computer or drive** — asks you on first run where you want your `input` and `output` folders (Windows `C:\`/`D:\`/`F:\`, macOS, or Linux).
-- ✅ **Fast bulk conversion** — converts entire batches of `.png`, `.jpg`, `.jpeg`, and `.webp` files in seconds using [`sharp`](https://sharp.pixelplumbing.com/).
-- ✅ **Keeps your exact filenames** — `Heart Blue.png` becomes `Heart Blue.jpg` or `Heart Blue.webp`.
-- ✅ **WebP support** — add `--format webp` for files 25–35% smaller than JPG with the same visual quality.
-- ✅ **Protects image proportions** — strictly verifies aspect ratios (EXIF-aware) and refuses to silently crop or stretch mismatched images.
+- ✅ **Fast bulk conversion** — converts entire batches of `.png`, `.jpg`, `.jpeg`, `.webp`, and `.avif` files in seconds using [`sharp`](https://sharp.pixelplumbing.com/).
+- ✅ **Keeps your exact filenames** — `Heart Blue.png` becomes `Heart Blue.jpg`, `.webp`, or `.avif`.
+- ✅ **JPG, WebP & AVIF output** — interactive prompt asks `jpg / webp / avif` right after size (`webp` is ~25–35% smaller, `avif` is ~30–50% smaller than JPG).
+- ✅ **Single-height & strict ratio protection** — enter `800px` to scale proportionally without ever losing aspect ratio, or `800x800` to strictly guard exact ratios (EXIF-aware).
 - ✅ **Clean backgrounds for transparent PNGs** — automatically flattens transparency onto white (`#ffffff`, customizable via `--bg`) instead of turning black.
 - ✅ **AI Assistant ready** — includes [`AGENTS.md`](AGENTS.md) and [`skills/image-compress-automation/SKILL.md`](skills/image-compress-automation/SKILL.md) so AI coding tools follow the exact same safe workflow.
 
@@ -30,9 +32,9 @@ With **Image Compress Automation**:
 ```mermaid
 flowchart LR
     A["1. First Run<br/>Pick working folder"] --> B["2. Drop images<br/>into input/"]
-    B --> C["3. Enter target size<br/>e.g. 800x800"]
-    C --> D{"Aspect ratio<br/>matches?"}
-    D -- Yes --> E["4. Saved as compressed .jpg or .webp<br/>in output/ (same filename)"]
+    B --> C["3. Enter height (800px) or WxH<br/>& choose jpg / webp / avif"]
+    C --> D{"Aspect ratio<br/>safe?"}
+    D -- Yes --> E["4. Saved as .jpg / .webp / .avif<br/>in output/ (same filename)"]
     D -- No --> F["Skipped safely with error<br/>+ valid size suggestion"]
 ```
 
@@ -70,17 +72,18 @@ npm start
 ```
 
 It automatically creates:
-- `D:\Store Images\input\` ← **drop your raw PNG/JPG/WEBP images here**
-- `D:\Store Images\output\` ← **pick up your compressed JPGs here**
+- `D:\Store Images\input\` ← **drop your raw PNG/JPG/WEBP/AVIF images here**
+- `D:\Store Images\output\` ← **pick up your compressed JPG / WebP / AVIF files here**
 
-Run `npm start` again once your images are inside `input/`, enter your target size (e.g. `800x800`), and watch it shrink the batch in seconds:
+Run `npm start` again once your images are inside `input/`, enter your target height (e.g. `800px`) or exact `WxH` (`800x800`), pick your format (`jpg / webp / avif`), and watch it shrink the batch in seconds:
 
 ```text
-📐 Found 24 image(s). Enter target size (e.g. 800x800, 1200x628) [Enter for 800x800]: 800x800
+📐 Found 24 image(s). Enter height (800px) or WxH (800x800) [Enter for 800x800]: 800px
+🖼️ Choose output format (jpg / webp / avif) [Enter for jpg]: webp
 
-  ✅ Boat Navy.png  →  Boat Navy.jpg
+  ✅ Boat Navy.png  →  Boat Navy.webp
      📐 1600x1600  →  800x800
-     📦 1966.1 KB  →  68.2 KB  (97% smaller)
+     📦 1966.1 KB  →  54.8 KB  (97% smaller)
 ...
 ════════════════════════════════════════
 ✅ 24 converted   ⚠️  0 skipped   ❌ 0 failed
@@ -112,12 +115,12 @@ You can pass flags directly with `node bin/cli.js` (or `node convert.js` for bac
 
 | Option | Alias | Default | Description |
 |---|---|---|---|
-| `--size <WxH>` | `-s` | Prompt / `800x800` | Target pixel dimensions (e.g. `800x800`, `1200x628`, `1080*1080`) |
-| `--format <jpg\|webp>` | `-f` | `jpg` | Output format: `jpg` (mozjpeg) or `webp` (25–35% smaller, great for Shopify) |
+| `--size <px\|WxH>` | `-s` | Prompt / `800x800` | Target height (`800px`, auto-scales proportional width) or exact `WxH` (`800x800`, `1200x628`) |
+| `--format <jpg\|webp\|avif>` | `-f` | Prompt / `jpg` | Output format: `jpg` (`mozjpeg`), `webp` (~25–35% smaller), or `avif` (~30–50% smaller) |
 | `--dir <path>` | `-d` | Saved config / cwd | Working folder containing `input/` and `output/` |
 | `--input <path>` | `-i` | `<dir>/input` | Custom input folder path |
 | `--output <path>` | `-o` | `<dir>/output` | Custom output folder path |
-| `--quality <1-100>` | `-q` | `85` | Output quality (JPG mozjpeg or WebP) |
+| `--quality <1-100>` | `-q` | `85` (`65` AVIF) | Output quality (defaults: `85` for JPG/WebP, `65` for AVIF) |
 | `--bg <hex>` | — | `#ffffff` | Background fill color for transparent PNGs |
 | `--setup` | — | `false` | Re-prompt and save a new default working folder |
 | `--reset` | — | `false` | Clear saved working folder config (`.imagerc.json`) |
@@ -129,23 +132,20 @@ You can pass flags directly with `node bin/cli.js` (or `node convert.js` for bac
 ### Common Examples
 
 ```bash
-# Interactive setup & prompts
+# Interactive setup & prompts (asks folder, size/height, and jpg/webp/avif)
 npm start
 
 # Change your saved working folder anytime
 npm run setup
 
-# Process a specific folder directly without prompts (JPG, default)
-node bin/cli.js --dir "~/Desktop/my-products" --size 800x800
+# Resize to 800px height (keeps every image's natural aspect ratio) and convert to WebP
+node bin/cli.js --dir "~/Desktop/my-products" --size 800px --format webp
 
-# Output WebP instead of JPG (25-35% smaller — ideal for Shopify/WooCommerce)
-node bin/cli.js --dir "~/Desktop/my-products" --size 800x800 --format webp
+# Ultra-light AVIF output (uses smart q65 default unless --quality is specified)
+node bin/cli.js --dir "~/Desktop/my-products" --size 800px --format avif
 
-# Custom input/output folders with 90% quality and light-gray background for PNGs
+# Custom input/output folders with 90% quality JPG and light-gray background for PNGs
 node bin/cli.js --input ./raw --output ./ready --size 1200x1200 --quality 90 --bg "#f5f5f5"
-
-# WebP with custom quality
-node bin/cli.js --input ./raw --output ./ready --size 800x800 --format webp --quality 80
 ```
 
 ---
@@ -170,10 +170,10 @@ image-compress-automation/
 ├── convert.js                           # Backwards-compatible CLI wrapper
 ├── src/
 │   ├── config.js                        # Cross-platform path & .imagerc.json management
-│   ├── parser.js                        # Argument, dimension, and hex color parsing
-│   ├── processor.js                     # Sharp batch conversion, transparency flatten, collision checks
-│   ├── prompt.js                        # Interactive folder & size prompts
-│   └── ratio.js                         # EXIF-aware aspect ratio validation & suggestions
+│   ├── parser.js                        # Argument, height/WxH size, format, and color parsing
+│   ├── processor.js                     # Sharp batch conversion (JPG/WebP/AVIF), flatten, collisions
+│   ├── prompt.js                        # Interactive folder, size/height, and format prompts
+│   └── ratio.js                         # EXIF-aware ratio validation & height-mode scaling
 ├── skills/image-compress-automation/
 │   └── SKILL.md                         # Tested cross-agent AI skill
 ├── AGENTS.md                            # AI assistant repository instructions
