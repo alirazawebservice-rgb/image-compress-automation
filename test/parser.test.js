@@ -1,6 +1,13 @@
 const { describe, it } = require('node:test');
 const assert = require('node:assert/strict');
-const { parseSize, parseColor, parseArgs, formatHelp } = require('../src/parser');
+const {
+  parseSize,
+  parseColor,
+  parseFormat,
+  getDefaultQuality,
+  parseArgs,
+  formatHelp,
+} = require('../src/parser');
 
 describe('parseSize', () => {
   it('parses standard dimension separators (x, X, *, ×, comma) with whitespace', () => {
@@ -11,13 +18,41 @@ describe('parseSize', () => {
     assert.deepEqual(parseSize('400, 300'), { width: 400, height: 300 });
   });
 
+  it('parses single integer or px size as target height with null width', () => {
+    assert.deepEqual(parseSize('800'), { width: null, height: 800 });
+    assert.deepEqual(parseSize('800px'), { width: null, height: 800 });
+    assert.deepEqual(parseSize(' 1200 PX '), { width: null, height: 1200 });
+  });
+
   it('rejects empty, zero, negative, fractional, oversized, or malformed dimensions', () => {
     assert.throws(() => parseSize(''), /Invalid size/i);
     assert.throws(() => parseSize('0x800'), /positive integer/i);
+    assert.throws(() => parseSize('0px'), /positive integer/i);
     assert.throws(() => parseSize('-800x800'), /Invalid size/i);
+    assert.throws(() => parseSize('-800px'), /Invalid size/i);
     assert.throws(() => parseSize('800.5x800'), /Invalid size/i);
     assert.throws(() => parseSize('abc'), /Invalid size/i);
     assert.throws(() => parseSize('20000x20000'), /16384/);
+    assert.throws(() => parseSize('20000px'), /16384/);
+  });
+});
+
+describe('parseFormat & getDefaultQuality', () => {
+  it('supports jpg, webp, avif, jpeg alias, optional dot, and case-insensitive input', () => {
+    assert.equal(parseFormat('jpg'), 'jpg');
+    assert.equal(parseFormat('webp'), 'webp');
+    assert.equal(parseFormat('avif'), 'avif');
+    assert.equal(parseFormat('.WEBP'), 'webp');
+    assert.equal(parseFormat('JPEG'), 'jpg');
+    assert.equal(getDefaultQuality('jpg'), 85);
+    assert.equal(getDefaultQuality('webp'), 85);
+    assert.equal(getDefaultQuality('avif'), 65);
+  });
+
+  it('rejects unsupported formats', () => {
+    assert.throws(() => parseFormat('gif'), /Invalid format/i);
+    assert.throws(() => parseFormat('png'), /Invalid format/i);
+    assert.throws(() => parseFormat(''), /Invalid format/i);
   });
 });
 
@@ -36,7 +71,7 @@ describe('parseColor', () => {
 });
 
 describe('parseArgs', () => {
-  it('parses defaults when argv is empty', () => {
+  it('parses defaults when argv is empty leaving quality and format undefined', () => {
     const parsed = parseArgs([]);
     assert.deepEqual(parsed, {
       help: false,
@@ -49,9 +84,9 @@ describe('parseArgs', () => {
       input: undefined,
       output: undefined,
       sizeArg: undefined,
-      quality: 85,
+      quality: undefined,
       bg: { r: 255, g: 255, b: 255 },
-      format: 'jpg',
+      format: undefined,
     });
   });
 
@@ -83,24 +118,24 @@ describe('parseArgs', () => {
 });
 
 describe('parseArgs --format flag', () => {
-  it('defaults format to "jpg" when flag is omitted', () => {
+  it('leaves format undefined when omitted', () => {
     const parsed = parseArgs([]);
-    assert.equal(parsed.format, 'jpg');
+    assert.equal(parsed.format, undefined);
   });
 
-  it('accepts --format webp', () => {
-    const parsed = parseArgs(['--format', 'webp']);
-    assert.equal(parsed.format, 'webp');
+  it('accepts --format webp and --format avif', () => {
+    assert.equal(parseArgs(['--format', 'webp']).format, 'webp');
+    assert.equal(parseArgs(['--format', 'avif']).format, 'avif');
   });
 
-  it('accepts -f webp shorthand', () => {
-    const parsed = parseArgs(['-f', 'webp']);
-    assert.equal(parsed.format, 'webp');
+  it('accepts -f shorthand and normalizes jpeg/uppercase', () => {
+    assert.equal(parseArgs(['-f', 'webp']).format, 'webp');
+    assert.equal(parseArgs(['-f', 'AVIF']).format, 'avif');
+    assert.equal(parseArgs(['--format', 'jpeg']).format, 'jpg');
   });
 
   it('accepts --format jpg explicitly', () => {
-    const parsed = parseArgs(['--format', 'jpg']);
-    assert.equal(parsed.format, 'jpg');
+    assert.equal(parseArgs(['--format', 'jpg']).format, 'jpg');
   });
 
   it('throws for unsupported format values', () => {
@@ -110,29 +145,8 @@ describe('parseArgs --format flag', () => {
   });
 });
 
-describe('parseArgs defaults include format', () => {
-  it('parses defaults when argv is empty including format: jpg', () => {
-    const parsed = parseArgs([]);
-    assert.deepEqual(parsed, {
-      help: false,
-      version: false,
-      setup: false,
-      reset: false,
-      yes: false,
-      strict: false,
-      dir: undefined,
-      input: undefined,
-      output: undefined,
-      sizeArg: undefined,
-      quality: 85,
-      bg: { r: 255, g: 255, b: 255 },
-      format: 'jpg',
-    });
-  });
-});
-
 describe('formatHelp', () => {
-  it('documents CLI flags and examples including --format', () => {
+  it('documents CLI flags and examples including --format, avif, and 800px height', () => {
     const help = formatHelp();
     assert.match(help, /--dir/);
     assert.match(help, /--size/);
@@ -140,5 +154,7 @@ describe('formatHelp', () => {
     assert.match(help, /--strict/);
     assert.match(help, /--reset/);
     assert.match(help, /--format/);
+    assert.match(help, /avif/);
+    assert.match(help, /800px/);
   });
 });
